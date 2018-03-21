@@ -7,7 +7,7 @@ Naver Place Scrapping Project
 - 각 점포 ID를 고유값으로 하므로 중복 없이(검색어가 중복되어도 e.g 강남 맛집, 서초역 맛집) 엑셀에 저장된다.
 
 # 사용 기술
--Python(3.4)
--Pyqt5(for GUI)
--xlrd,xlwt(for excel)
--json,requests(for Scarpping and Parsing)
+- Python(3.4)
+- Pyqt5(for GUI)
+- xlrd,xlwt(for excel)
+- json,requests,BeautifulSoup(for Scarpping and Parsing)
