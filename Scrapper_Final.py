@@ -25,6 +25,14 @@ alt_path = ""
 excel_id_dict = []
 
 
+#네이버 지도에 ?로 표시되는 항목은(주소가 부정확 한경우??) 스크래핑이 안됨
+#실제 네이버 결과와 비교하여 확인 결과 100% 취합이 가능한 것으로 보이며
+#개수의 차이가 있는 경우는 네이버 지도상 표시되는 경계와 실제 지역으로 잡히는 바운더리가 달라서 인듯 함
+#실제로 테스트 해본 경우는 1000개가 있다고 나왔는데 스크래핑 결과가 800개 정도일 때, 한 페이지당 20개의 가게가 노출되므로 499페이지에는
+#점포가 전부 노출이 되어야 하지만 , 페이지를 이동 해 본 결과 데이터가 없고,  399페이지까지 데이터가 있는걸로 확인되므로
+#스크래핑이 정확함
+
+
 class mydata:
 
     global item_list
@@ -76,6 +84,8 @@ def get_parse(pagenum,query):
     html = html.replace('\"none\"', '\" \"')
     html = html.replace('\"None\"', '\" \"')
     html = html.replace("null,", '\" \",')
+    #180404 추가, (오류 키워드 서초 맛집, promotionTitle 이 있는 가게에서 발생 )
+    html = html.replace(':,', ':\" \",')
     #print(html)
     try:
         soup = BeautifulSoup(html, 'html.parser')
@@ -92,7 +102,14 @@ def get_parse(pagenum,query):
 
     start_idx = dataString.find("\"searchCondition\"") - 1
     end_idx = dataString.rfind("}") + 1
-    myjson = json.loads(dataString[start_idx: end_idx])
+
+    try:
+
+        myjson = json.loads(dataString[start_idx: end_idx])
+
+    except json.decoder.JSONDecodeError:
+        print("해당 페이지에 오류가 있습니다(Json)")
+        return -2
     arr_json = myjson['businesses']
     query = arr_json.get('queue')
     id_str = 'id'
@@ -163,7 +180,7 @@ def get_parse(pagenum,query):
             else:
                 category = my_dict['category']
 
-            if(not (id_chk and name_chk and roadAddr_chk and commonAddr_chk and addr_chk and category_chk)):
+            if(not (id_chk or name_chk or roadAddr_chk or commonAddr_chk or addr_chk or category_chk)):
                 print("전부 없는 경우 garbage 값이므로 pass")
 
             else:
@@ -184,40 +201,22 @@ def get_parse(pagenum,query):
         #print(my_dict)
     return myData_list
 
-# class loading(QWidget):
-#     def __init__(self):
-#         super().__init__()
-#         self.setGeometry(300, 200, 480, 240)
-#         self.setWindowTitle('loading...')
-#
-#         movielabel = QLabel("", self)
-#         movielabel.move(120, 60)
-#         movielabel.resize(135, 150)
-#         # todo anim이 보이기는 하는데.. 우선순위가 낮아서 그런지 텍스트가 먼저보임
-#         movie = QMovie(self)
-#         movie.setCacheMode(QMovie.CacheAll)
-#         movielabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-#         movielabel.setAutoFillBackground(True)
-#         movielabel.setMovie(movie)
-#         movie.setFileName('my_leo.gif')
-#         movie.start()
-#         movielabel.show()
-
-
 class myTest(QMainWindow):
     #def __init__(self, parent=None):
         #super(myTest, self).__init__(parent)
     def __init__(self):
         super().__init__()
-
-        #TODO alt path 수정해야함....
+        alt_path = path
+        print('alt_path is ..' + alt_path)
+        '''
+        #TODO alt path 수정해야함....(그래도 혹시 모르니 , 윈도우 기반 바탕화면 path 입력해둘것)
         global alt_path
         alt_path = "/Users/esens/Documents/example.xls"
         if not path:
             alt_path = "/Users/esens/Documents/pathSample.xls"
         else:
             alt_path = path+".xls"
-
+        '''
         # 검색어
         self.textlabel = QLabel("검색어 :", self)
         self.textlabel.move(20, 30)
@@ -284,6 +283,9 @@ class myTest(QMainWindow):
                     myList.append(ret)
                     time.sleep(random.uniform(0.25, 1.8))
                     continue
+                #json error catch
+                elif ret == -2:
+                    continue
                 else:
                     print("ret is not list ")
                     break
@@ -303,6 +305,7 @@ class myTest(QMainWindow):
 
             btn_cancel = QPushButton("취소", self)
             btn_cancel.move(240, 70)
+            btn_cancel.clicked.connect(self.cancel_clicked)
             btn_cancel.show()
             #전체 아이템의 개수
             cnt_idx = 0
@@ -312,12 +315,13 @@ class myTest(QMainWindow):
 
             #데이터 label에 보여주기
             #self.label.setText(str_print)
-            #todo 전역변수에 리턴값을 담아둔다 추후 엑셀 데이터 로딩 후 중복 제외를 위함
             global parse_data
             parse_data = myList
+    def cancel_clicked(self):
+        self.close()
 
     def save_clicked(self):
-        #todo 취소를 눌러도 저장됨
+
         self.open()
         try:
             r_workbook = get_excel_data(alt_path)
@@ -359,8 +363,6 @@ class myTest(QMainWindow):
                     #worksheet.write(i+1, 5, parse_data[i].addr)  #구주소2(상세주소)
             wb.save(alt_path)
             QMessageBox.information(self, '저장완료!', "저장을 완료하였습니다. : ", QMessageBox.Ok)
-            #todo 데이터 초기화!!
-
             parse_data = list()
             myList = list()
         except:
@@ -426,11 +428,6 @@ def check_space(self, testString):
 if __name__ == '__main__':
     global path
     path = os.getcwd()
-
-    # app = QApplication(sys.argv)
-    # app.setStyleSheet("QMainWindow{background-color: rgb(30,30,30);border: 1px solid black}")
-    # ex = anim.cssden()
-    # sys.exit(app.exec_())
     print("main_func.. path : " + path)
     app = QApplication(sys.argv)
     ex = myTest()
