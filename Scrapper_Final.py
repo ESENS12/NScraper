@@ -69,137 +69,8 @@ def get_html(url):
         _html = resp.text
     return _html
 
-def get_parse(pagenum,query):
-    if pagenum < 0:
-        print("pagenum err")
-        return -1
-    print("get_parse : " + str(pagenum) + " ," +query)
-    URL = "https://store.naver.com/restaurants/list?&page=" + str(pagenum) + "&query=" + query
-    html = get_html(URL)
-    if not html:
-        print("is not html")
-        return -1
-    html = html.replace('\" \"' , "")
-    html = html.replace(",null", "")
-    html = html.replace('\"none\"', '\" \"')
-    html = html.replace('\"None\"', '\" \"')
-    html = html.replace("null,", '\" \",')
-    #180404 추가, (오류 키워드 서초 맛집, promotionTitle 이 있는 가게에서 발생 )
-    html = html.replace(':,', ':\" \",')
-    #print(html)
-    try:
-        soup = BeautifulSoup(html, 'html.parser')
-        # 3번째 script에 필요한 정보가 있으므로
-        filter_area = soup.find_all('script')
+### 실질적으로 파싱을 수행하는 getParse 함수는 공개 하지 않음
 
-        dataString = str(filter_area[2])
-        #print("---- html parsing start ----")
-        #print(dataString)
-        print("---- html parsing end ----")
-    except IndexError :
-        #해당 script가 비어있음. pass
-        return -1
-
-    start_idx = dataString.find("\"searchCondition\"") - 1
-    end_idx = dataString.rfind("}") + 1
-
-    try:
-
-        myjson = json.loads(dataString[start_idx: end_idx])
-
-    except json.decoder.JSONDecodeError:
-        print("해당 페이지에 오류가 있습니다(Json)")
-        return -2
-    arr_json = myjson['businesses']
-    query = arr_json.get('queue')
-    id_str = 'id'
-    list_values = [id_str for id_str in arr_json.values()]
-
-    # dict의 pair를 list로 받아올 수 없어서 list로 만든 다음 필요한 item만 slice
-    itemjson = list_values[2]
-
-    id_list = list()
-    id_list = list(itemjson['items'])
-
-    save_data = mydata()
-    #save_data.__init__()
-    #mydata를 저장할 list
-    myData_list = []
-    if(len(id_list) < 3):
-        print("id_list size is under 3")
-        return -1
-    my_dict = dict()
-
-    # 각 점포별로 iteration하면서 필요한 데이터 뽑아옴
-    for i in range(0, len(id_list)+1):
-        id = ""
-        roadAddr = ""
-        commonAddr = ""
-        addr = ""
-        category = ""
-
-        id_chk = True
-        name_chk = True
-        roadAddr_chk = True
-        commonAddr_chk = True
-        addr_chk = True
-        category_chk = True
-
-        try:
-            my_dict = id_list[i]
-            #print(my_dict)
-            if ('id' not in my_dict):
-                id = "id 없음"
-                id_chk = False
-            else:
-                id = my_dict['id']
-            if ('name' not in my_dict):
-                name = "상호명 없음"
-                name_chk = False
-            else:
-                name = my_dict['name']
-            if ('roadAddr' not in my_dict):
-                roadAddr = "도로명 주소 없음"
-                roadAddr_chk = False
-            else:
-                roadAddr = my_dict['roadAddr']
-            if('commonAddr' not in my_dict):
-                commonAddr = "일반주소 없음"
-                commonAddr_chk = False
-            else:
-                commonAddr = my_dict['commonAddr']
-            if ('addr' not in my_dict):
-                addr = "상세주소 없음"
-                addr_chk = False
-            else:
-                addr = my_dict['addr']
-
-            if ('category' not in my_dict):
-                category = "카테고리 없음"
-                category_chk = False
-            else:
-                category = my_dict['category']
-
-            if(not (id_chk or name_chk or roadAddr_chk or commonAddr_chk or addr_chk or category_chk)):
-                print("전부 없는 경우 garbage 값이므로 pass")
-
-            else:
-                ret_save = save_data.setData(id,name,roadAddr,commonAddr,addr,category)
-                if type(ret_save) is mydata:
-                    myData_list.append(save_data)
-                save_data = mydata()
-
-        except TypeError as e:
-            print("typeError!" + str(e))
-            continue
-        except IndexError as e1:
-            print("Scrapping End")
-            continue
-        except:
-            print("exception!")
-            return -1
-        #print(my_dict)
-    return myData_list
 
 class myTest(QMainWindow):
     #def __init__(self, parent=None):
@@ -211,9 +82,9 @@ class myTest(QMainWindow):
         '''
         #TODO alt path 수정해야함....(그래도 혹시 모르니 , 윈도우 기반 바탕화면 path 입력해둘것)
         global alt_path
-        alt_path = "/Users/esens/Documents/example.xls"
+        alt_path = ".../example.xls"
         if not path:
-            alt_path = "/Users/esens/Documents/pathSample.xls"
+            alt_path = ".../pathSample.xls"
         else:
             alt_path = path+".xls"
         '''
@@ -278,6 +149,7 @@ class myTest(QMainWindow):
         if chk_ret > 0 :
             for i in range(1, 500, 3):
                 print("---------------" + str(i) + "--------------")
+
                 ret = get_parse(i, str(textboxValue))
                 if type(ret) is list:
                     myList.append(ret)
