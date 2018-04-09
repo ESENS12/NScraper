@@ -33,6 +33,9 @@ excel_id_dict = []
 #점포가 전부 노출이 되어야 하지만 , 페이지를 이동 해 본 결과 데이터가 없고,  399페이지까지 데이터가 있는걸로 확인되므로
 #스크래핑이 정확함
 
+#한 키워드당 5천건이 MAXIMUM 이다. 페이지로 치면 250~251 페이지 까지만 된다고 보면 됨.
+#그러므로 가이드를 작은 지역부터 점점 넓혀가면서 검색하는게 좋음
+
 
 class mydata:
 
@@ -194,7 +197,7 @@ def get_parse(pagenum,query):
             print("typeError!" + str(e))
             continue
         except IndexError as e1:
-            print("Scrapping End")
+            print("Scraping End")
             continue
         except:
             print("exception!")
@@ -209,6 +212,7 @@ class myTest(QMainWindow):
         super().__init__()
         alt_path = path
         print('alt_path is ..' + alt_path)
+
         '''
         #TODO alt path 수정해야함....(그래도 혹시 모르니 , 윈도우 기반 바탕화면 path 입력해둘것)
         global alt_path
@@ -218,25 +222,36 @@ class myTest(QMainWindow):
         else:
             alt_path = path+".xls"
         '''
+
         # 검색어
         self.textlabel = QLabel("검색어 :", self)
         self.textlabel.move(20, 30)
         self.textlabel.resize(60, 30)
+
+        # 저작 표시
+        self.textlabel = QLabel("Copyright(c)2018 ESENS All rights reserved. ", self)
+        self.textlabel.move(70, 60)
+        self.textlabel.resize(360, 60)
+
+        self.textlabel = QLabel("문의 사항 : ghdldid12@gmail.com ", self)
+        self.textlabel.move(90, 75)
+        self.textlabel.resize(260, 75)
 
         # 검색어 텍스트박스
         self.textedit = QTextEdit("", self)
         self.textedit.move(80,30)
         self.textedit.resize(260,30)
 
+        # 조회 버튼
         btn_select = QPushButton("조회", self)
-        btn_select.move(365, 30) #x, y
+        btn_select.move(345, 30) #x, y
         btn_select.resize(80, 35) #width, height
         btn_select.clicked.connect(self.search_clicked)
 
         self.statusbar = self.statusBar()
         #x,y,width,height
-        self.setGeometry(300, 200, 480, 240)
-        self.setWindowTitle('Scrapping Module')
+        self.setGeometry(300, 200, 445, 175)
+        self.setWindowTitle('Scraping Module')
 
         #self.show_loading(True)
         self.show()
@@ -260,10 +275,10 @@ class myTest(QMainWindow):
         if tag:
             #self.movielabel.hide()
             self.movielabel.show()
-            print("show!")
+
         else:
             self.movielabel.hide()
-            print("not show!")
+
 
     def search_clicked(self):
 
@@ -277,12 +292,12 @@ class myTest(QMainWindow):
         chk_ret = check_space(self, str(textboxValue))
         #공백 체크 통과
         if chk_ret > 0 :
-            for i in range(1, 500, 3):
+            for i in range(1, 300, 3):
                 print("---------------" + str(i) + "--------------")
                 ret = get_parse(i, str(textboxValue))
                 if type(ret) is list:
                     myList.append(ret)
-                    time.sleep(random.uniform(0.25, 1.8))
+                    time.sleep(random.uniform(0.7, 1.8))
                     continue
                 #json error catch
                 elif ret == -2:
