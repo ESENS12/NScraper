@@ -1,8 +1,3 @@
-'''
-180308
-Author : ESENS
-네이버 플레이스 검색을 도와주는 스크래핑 모듈
-'''
 
 import xlrd
 import xlwt
@@ -11,8 +6,6 @@ import json
 from bs4 import BeautifulSoup
 from PyQt5.QtWidgets import *
 from xlutils.copy import copy
-from PyQt5.QtGui import QMovie
-from PyQt5.QtCore import QFileInfo
 
 import random
 import time
@@ -23,8 +16,6 @@ id_dict = []
 myList = []
 alt_path = ""
 excel_id_dict = []
-
-#TODO: 다중 키워드 검색, 검색 기록 , 검색 중 정지, 결과 사용자에게 보여줌,
 
 #네이버 지도에 ?로 표시되는 항목은(주소가 부정확 한경우??) 스크래핑이 안됨
 #실제 네이버 결과와 비교하여 확인 결과 100% 취합이 가능한 것으로 보이며
@@ -48,8 +39,9 @@ class mydata:
         self.roadAddr = str()
         self.commAddr = str()
         self.category = str()
+        self.phone = str()
 
-    def setData(self,id,name,roadAddr,commAddr,addr,category):
+    def setData(self,id,name,roadAddr,commAddr,addr,category,phone):
         global id_dict
         if(id not in id_dict):
             id_dict.append(id)
@@ -58,17 +50,28 @@ class mydata:
             self.roadAddr = roadAddr
             self.commAddr = commAddr+" "+addr
             self.category = category
+            # 180426 추가 패치
+            self.phone = phone
             return self
         else:
             return -1
 
     def show_data(self):
-        return " " + self.name + " " + self.roadAddr + " " + self.commAddr + self.category
+        return " " + self.name + " " + self.roadAddr + " " + self.commAddr + self.category + self.phone
 
 
 def get_html(url):
     _html = ""
-    resp = requests.get(url)
+    # 180509 패치
+    header = [{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41'}
+              ,{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36'}
+              ,{'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0'}
+              ,{'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'}
+        , {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; Win64; x64; Trident/7.0; rv:11.0) like Gecko'}]
+    #resp = requests.get('https://blog.naver.com/PostList.nhn?from=postList&blogId=dutxod2&currentPage=2')
+    randomIndex = random.randrange(0,len(header))
+    resp = requests.get(url, headers=header[randomIndex])
+    print('random header = ' + str(header[randomIndex]))
     if resp.status_code == 200:
         _html = resp.text
     return _html
@@ -88,7 +91,7 @@ def get_parse(pagenum,query):
     html = html.replace('\"none\"', '\" \"')
     html = html.replace('\"None\"', '\" \"')
     html = html.replace("null,", '\" \",')
-    #180404 추가, (오류 키워드 서초 맛집, promotionTitle 이 있는 가게에서 발생 )
+    #180404 추가, (오류 키워드 서초 맛집, promotionTitle 이 있는 가게에서 발생)
     html = html.replace(':,', ':\" \",')
     #print(html)
     try:
@@ -141,6 +144,7 @@ def get_parse(pagenum,query):
         commonAddr = ""
         addr = ""
         category = ""
+        phone = ""
 
         id_chk = True
         name_chk = True
@@ -148,6 +152,7 @@ def get_parse(pagenum,query):
         commonAddr_chk = True
         addr_chk = True
         category_chk = True
+        phone_chk = True
 
         try:
             my_dict = id_list[i]
@@ -184,11 +189,18 @@ def get_parse(pagenum,query):
             else:
                 category = my_dict['category']
 
-            if(not (id_chk or name_chk or roadAddr_chk or commonAddr_chk or addr_chk or category_chk)):
+            # 180426 추가 패치
+            if ('phone' not in my_dict):
+                phone = "전화번호 없음"
+                phone_chk = False
+            else:
+                phone = my_dict['phone']
+
+            if(not (id_chk or name_chk or roadAddr_chk or commonAddr_chk or addr_chk or category_chk or phone_chk)):
                 print("전부 없는 경우 garbage 값이므로 pass")
 
             else:
-                ret_save = save_data.setData(id,name,roadAddr,commonAddr,addr,category)
+                ret_save = save_data.setData(id,name,roadAddr,commonAddr,addr,category,phone)
                 if type(ret_save) is mydata:
                     myData_list.append(save_data)
                 save_data = mydata()
@@ -197,7 +209,7 @@ def get_parse(pagenum,query):
             print("typeError!" + str(e))
             continue
         except IndexError as e1:
-            print("Scraping End")
+            print("Scrapping End")
             continue
         except:
             print("exception!")
@@ -228,14 +240,15 @@ class myTest(QMainWindow):
         self.textlabel.move(20, 30)
         self.textlabel.resize(60, 30)
 
-        # 저작 표시
+        # 저작권
         self.textlabel = QLabel("Copyright(c)2018 ESENS All rights reserved. ", self)
-        self.textlabel.move(70, 60)
-        self.textlabel.resize(360, 60)
+        self.textlabel.move(70, 75)
+        self.textlabel.resize(360, 75)
 
-        self.textlabel = QLabel("문의 사항 : ghdldid12@gmail.com ", self)
-        self.textlabel.move(90, 75)
-        self.textlabel.resize(260, 75)
+        # 문의사항
+        self.textlabel = QLabel("문의사항 : ghdldid12@gmail.com ", self)
+        self.textlabel.move(105, 90)
+        self.textlabel.resize(260, 90)
 
         # 검색어 텍스트박스
         self.textedit = QTextEdit("", self)
@@ -250,7 +263,7 @@ class myTest(QMainWindow):
 
         self.statusbar = self.statusBar()
         #x,y,width,height
-        self.setGeometry(300, 200, 445, 175)
+        self.setGeometry(300, 200, 445, 205)
         self.setWindowTitle('Scraping Module')
 
         #self.show_loading(True)
@@ -357,7 +370,7 @@ class myTest(QMainWindow):
                 else:
                     QMessageBox.information(self, '저장 취소!', "저장이 취소되었습니다. : ", QMessageBox.Ok)
                     return
-
+            cnt_pass = 0
 
             #전체 아이템의 개수
             cnt_idx = 0
@@ -367,17 +380,22 @@ class myTest(QMainWindow):
             for i in range(0, len(parse_data)):
                 for j in range(0, len(parse_data[i])):
                     if (parse_data[i][j].id not in excel_id_dict):
-                        worksheet.write(num_rows + cnt_idx, 0, num_rows + cnt_idx)    #번호
-                        worksheet.write(num_rows + cnt_idx, 1, parse_data[i][j].id) #점포 id
+                        worksheet.write(num_rows + cnt_idx, 0, num_rows + cnt_idx)          #번호
+                        worksheet.write(num_rows + cnt_idx, 1, parse_data[i][j].id)         #점포 id
                         worksheet.write(num_rows + cnt_idx, 2, parse_data[i][j].category)
-                        worksheet.write(num_rows + cnt_idx, 3, parse_data[i][j].name)  #상호명
-                        worksheet.write(num_rows + cnt_idx, 4, parse_data[i][j].roadAddr)  #도로명 주소
-                        worksheet.write(num_rows + cnt_idx, 5, parse_data[i][j].commAddr)  #구주소1
+                        worksheet.write(num_rows + cnt_idx, 3, parse_data[i][j].name)       #상호명
+                        worksheet.write(num_rows + cnt_idx, 4, parse_data[i][j].roadAddr)   #도로명 주소
+                        worksheet.write(num_rows + cnt_idx, 5, parse_data[i][j].commAddr)   #구주소1
+                        worksheet.write(num_rows + cnt_idx, 6, parse_data[i][j].phone)      #전화번호
                         cnt_idx += 1
                     else:
-                        print("엑셀 데이터와 중복 발생! 패스함, ")
+                        cnt_pass += 1
+
                     #worksheet.write(i+1, 5, parse_data[i].addr)  #구주소2(상세주소)
             wb.save(alt_path)
+            #180425 패치
+            print("엑셀 데이터와 " + str(cnt_pass) + "건의 중복이 발생 하였습니다.")
+
             QMessageBox.information(self, '저장완료!', "저장을 완료하였습니다. : ", QMessageBox.Ok)
             parse_data = list()
             myList = list()
@@ -406,6 +424,8 @@ def get_excel_data(path):
         worksheet.write(0, 3, u"상호명")
         worksheet.write(0, 4, u"도로명 주소")
         worksheet.write(0, 5, u"지번 주소")
+        #180426 추가 패치
+        worksheet.write(0, 6, u"전화번호")
         workbook.save(path)
         return xlrd.open_workbook(path)
     except:
